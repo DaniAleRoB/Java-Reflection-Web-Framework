@@ -400,10 +400,142 @@ new Thread(() -> {
 
 ---
 
+## AWS Deployment
+
+This section documents the deployment of the application on an AWS EC2 instance.
+
+### Prerequisites
+
+- AWS EC2 instance running (t3.micro or similar)
+- Security Group configured to allow:
+  - Port 22 (SSH)
+  - Port 35000 (Application)
+- .pem key file for SSH access
+- Java 21+ installed on the EC2 instance
+
+### Deployment Steps
+
+#### 1. Compile and Package the Application
+
+```bash
+mvn clean package
+```
+
+This generates the compiled classes in `target/classes` and creates a JAR file.
+
+#### 2. Prepare Files for Transfer
+
+Create a deployment package with the compiled classes:
+
+```bash
+cd target
+zip -r classes.zip classes/
+```
+
+**IMPORTANT**: 
+- Keep your `.pem` key file in a **separate folder OUTSIDE the repository** (e.g., `C:\aws-keys\` or `~/aws-keys/`)
+- The `.pem` file should **NEVER** be committed to Git (it's like your password!)
+- The `classes.zip` file is also temporary and doesn't need to be in the repo
+
+Alternatively, you can transfer the entire `target` directory or use the generated JAR file.
+
+#### 3. Connect to EC2 Instance
+
+Use SSH with your .pem key to connect to the instance:
+
+```bash
+ssh -i "your-key.pem" ec2-user@your-instance-public-ip
+```
+
+Replace:
+- `your-key.pem` with your key file name
+- `your-instance-public-ip` with your EC2 instance public IP (e.g., 3.89.83.144)
+
+![alt text](<images/EC2 Instance Running.png>)
+
+#### 4. Transfer Application to EC2
+
+From your local machine, use SCP to transfer the files:
+
+```bash
+scp -i "your-key.pem" target/classes.zip ec2-user@your-instance-public-ip:~/
+```
+
+Or transfer the entire target directory:
+
+```bash
+scp -i "your-key.pem" -r target ec2-user@your-instance-public-ip:~/
+```
+
+![alt text](images/aws-scp-transfer.png)
+
+#### 5. Install Java on EC2 (if not installed)
+
+Connect to the instance and install Java 21:
+
+```bash
+# For Amazon Linux 2023
+sudo yum install java-21-amazon-corretto -y
+
+# Verify installation
+java -version
+```
+
+#### 6. Extract and Run the Application
+
+On the EC2 instance:
+
+```bash
+# If you transferred the zip file
+unzip classes.zip
+
+# Run the application
+java -cp classes edu.escuelaing.framework.ioc.MicroSpringBoot
+```
+
+The server should start and listen on port 35000.
+
+![alt text](images/ws-server-running.png)
+
+#### 7. Configure Security Group
+
+Ensure your EC2 Security Group has an inbound rule allowing TCP traffic on port 35000:
+
+- **Type**: Custom TCP
+- **Port**: 35000
+- **Source**: 0.0.0.0/0 (or your specific IP for security)
+
+![alt text](images/SecurityRules.png)
+
+#### 8. Access the Application
+
+Open a web browser and access:
+
+```
+http://your-instance-public-ip:35000
+```
+
+Test the endpoints:
+- `http://your-instance-public-ip:35000/` - Main page
+- `http://your-instance-public-ip:35000/hello` - Hello endpoint
+- `http://your-instance-public-ip:35000/greeting?name=Daniel` - Greeting with parameter
+- `http://your-instance-public-ip:35000/pi` - Math endpoint
+
+
+![alt text](images/aws-app-empty.png)
+
+![alt text](images/aws-app-hello.png)
+
+![alt text](images/aws-app-hello-daniel.png)
+
+![alt text](images/aws-app-pi.png)
+
+---
+
 ## Author
 
 **Student**: Daniel Alejandro Rodriguez Baracaldo  
-**Course**: Enterprise Software Development Workshop  
+**Course**: Enterprise Architectures 
 **Date**: March 2026
 
 ---
